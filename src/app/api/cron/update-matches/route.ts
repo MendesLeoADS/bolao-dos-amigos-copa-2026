@@ -38,7 +38,8 @@ export async function GET(request: Request) {
     // Como o football-data.org filtra por data e não IDs, pegamos a data de hoje (YYYY-MM-DD)
     const today = new Date().toISOString().split('T')[0];
 
-    const apiRes = await fetch(`${API_URL}?dateFrom=${today}&dateTo=${today}`, {
+    // Incluímos &competitions=2000 (FIFA World Cup) para garantir a busca correta
+    const apiRes = await fetch(`${API_URL}?dateFrom=${today}&dateTo=${today}&competitions=2000`, {
       method: 'GET',
       headers: {
         'X-Auth-Token': API_KEY,
