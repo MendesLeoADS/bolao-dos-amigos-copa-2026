@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Regra Global: leitura permitida para todos (para simplificar como no Supabase)
+    match /{document=**} {
+      allow read: if true;
+    }
+
+    match /usuarios/{userId} {
+      allow write: if false; // Ninguém altera usuários pelo front
+    }
+
+    match /jogos/{jogoId} {
+      allow write: if false; // Apenas o Admin (Worker) pode atualizar os jogos
+    }
+
+    match /palpites/{palpiteId} {
+      // Regra de inserção/atualização para palpites
+      // 1. O palpiteId deve seguir o padrão user_id + "_" + jogo_id (controlado pelo backend)
+      // 2. A data atual (request.time) deve ser anterior à data_hora do jogo menos 5 minutos
+      allow write: if 
+        // Pega o documento do jogo relacionado a este palpite
+        get(/databases/$(database)/documents/jogos/$(request.resource.data.jogo_id)).data.status == 'AGENDADO'
+        &&
+        request.time <= (get(/databases/$(database)/documents/jogos/$(request.resource.data.jogo_id)).data.data_hora.toMillis() - duration.value(5, 'm'));
+    }
+  }
+}

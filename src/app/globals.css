@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Tema Copa do Mundo Brasil 2026 */
+    --brasil-verde: #009c3b;
+    --brasil-amarelo: #FFDF00;
+    --brasil-azul: #002776;
+
+    --background: 210 40% 97%;
+    --foreground: 222 60% 10%;
+
+    --primary: 142 100% 31%;        /* Verde Brasil */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 51 100% 50%;       /* Amarelo Brasil */
+    --secondary-foreground: 220 80% 15%;
+
+    --accent: 220 100% 23%;         /* Azul Brasil */
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 210 30% 95%;
+    --muted-foreground: 215 20% 50%;
+
+    --border: 214 25% 88%;
+    --ring: 142 100% 31%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+}
+
+/* Animações */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2.5s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.shimmer-gold {
+  background: linear-gradient(90deg, #FFDF00 0%, #FFF176 40%, #FFDF00 60%, #f59e0b 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #009c3b; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #007a2f; }
+
+/* Glassmorphism util */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Input num sem setas */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] { -moz-appearance: textfield; }
+
+/* Tabela de jogos */
+.table-header-cell {
+  @apply px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider;
+  background: linear-gradient(90deg, #002776, #003d99);
+}
+.table-cell {
+  @apply px-4 py-3 whitespace-nowrap text-sm text-center border-b border-gray-100;
+}
