@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     
     // Jogos no nosso banco de dados que devem ser monitorados hoje
     const jogosVerificar = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .map(doc => ({ id: doc.id, ...doc.data() } as any))
       .filter((j: any) => {
         if (j.status === 'AO_VIVO') return true;
         // Se agendado e já passou da hora (com 1 hora de tolerância pra frente ou pra trás)
