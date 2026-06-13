@@ -41,7 +41,10 @@ export async function GET(request: Request) {
     datas.push(new Date().toISOString().split('T')[0]); // Garante que a data de hoje está inclusa
     datas.sort();
     
-    const dateFrom = datas[0];
+    // Adicionamos uma margem de segurança de 2 dias para não perder jogos por fuso horário da API
+    const dateObj = new Date(datas[0]);
+    dateObj.setDate(dateObj.getDate() - 2);
+    const dateFrom = dateObj.toISOString().split('T')[0];
     const dateTo = datas[datas.length - 1];
 
     // Incluímos &competitions=2000 (FIFA World Cup) para garantir a busca correta
