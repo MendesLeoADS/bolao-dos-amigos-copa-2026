@@ -11,10 +11,10 @@ export async function GET() {
     // 1. Pega TODOS os jogos do Firestore (incluindo ENCERRADO)
     const snapshot = await adminDb.collection('jogos').get();
     const todos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-    
+
     // 2. Filtra só o jogo dos EUA (ID 537345)
     const usaMatch = todos.find(j => String(j.id) === '537345');
-    
+
     // 3. Pega os jogos que o cron tentaria verificar
     const nowMillis = new Date().getTime();
     const jogosVerificar = todos
