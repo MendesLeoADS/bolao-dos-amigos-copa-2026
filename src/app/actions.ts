@@ -30,7 +30,7 @@ export async function loginAction(_prevState: any, formData: FormData) {
 
     await setSession({ id: userDoc.id, username: userData.username });
   } catch (err: any) {
-    return { error: 'Erro ao conectar. Tente novamente.' };
+    return { error: err.message || 'Erro ao conectar. Tente novamente.' };
   }
 
   redirect('/');
