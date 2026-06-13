@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 
+let firestoreDb: any = null;
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
@@ -10,9 +11,12 @@ if (!admin.apps.length) {
         privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       }),
     });
+    firestoreDb = admin.firestore();
   } catch (error: any) {
-    console.error('Firebase admin initialization error', error.stack);
+    console.error('Firebase admin initialization error:', error.message);
   }
+} else {
+  firestoreDb = admin.firestore();
 }
 
-export const adminDb = admin.firestore();
+export const adminDb = firestoreDb as admin.firestore.Firestore;
