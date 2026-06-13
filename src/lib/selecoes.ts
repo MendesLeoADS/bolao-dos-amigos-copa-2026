@@ -97,7 +97,7 @@ export const TRADUCOES_SELECOES: Record<string, string> = {
   'Malaysia': 'Malásia',
   'Nigeria': 'Nigéria',
   'Cameroon': 'Camarões',
-  'Ghana': 'Gana',
+
   'Kenya': 'Quênia',
   'Zambia': 'Zâmbia',
   'Mali': 'Mali',
@@ -114,8 +114,7 @@ export const TRADUCOES_SELECOES: Record<string, string> = {
   'Bolivia': 'Bolívia',
   'Peru': 'Peru',
   'Chile': 'Chile',
-  'Switzerland': 'Suíça',
-  'Belgium': 'Bélgica',
+
   'Korea Republic': 'Coreia do Sul',
   'Bosnia-H.': 'Bósnia e Herz.',
 };
