@@ -17,7 +17,8 @@ export async function GET(request: Request) {
 
   try {
     const jogosRef = adminDb.collection('jogos');
-    const snapshot = await jogosRef.get();
+    // Otimização: Busca apenas jogos que não foram encerrados para poupar a cota gratuita do Firebase
+    const snapshot = await jogosRef.where('status', 'in', ['AGENDADO', 'AO_VIVO']).get();
     
     const nowMillis = new Date().getTime();
     
@@ -35,11 +36,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Nenhum jogo ocorrendo no momento.' });
     }
 
-    // Como o football-data.org filtra por data e não IDs, pegamos a data de hoje (YYYY-MM-DD)
-    const today = new Date().toISOString().split('T')[0];
+    // Como o football-data.org filtra por data e não IDs, pegamos a data do jogo mais antigo pendente
+    const datas = jogosVerificar.map(j => j.data_hora.split('T')[0]);
+    datas.push(new Date().toISOString().split('T')[0]); // Garante que a data de hoje está inclusa
+    datas.sort();
+    
+    const dateFrom = datas[0];
+    const dateTo = datas[datas.length - 1];
 
     // Incluímos &competitions=2000 (FIFA World Cup) para garantir a busca correta
-    const apiRes = await fetch(`${API_URL}?dateFrom=${today}&dateTo=${today}&competitions=2000`, {
+    const apiRes = await fetch(`${API_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=2000`, {
       method: 'GET',
       headers: {
         'X-Auth-Token': API_KEY,

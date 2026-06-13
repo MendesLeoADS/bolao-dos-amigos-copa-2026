@@ -23,12 +23,10 @@ async function run() {
     console.log("Jogos:");
     jogos.forEach(j => {
       if (
-        j.time_a.toLowerCase().includes('canad') || 
-        j.time_b.toLowerCase().includes('canad') || 
-        j.time_a.toLowerCase().includes('corei') || 
-        j.time_b.toLowerCase().includes('corei') ||
-        j.time_a.toLowerCase().includes('bosnia') ||
-        j.time_b.toLowerCase().includes('bosnia')
+        j.time_a.toLowerCase().includes('estad') || 
+        j.time_b.toLowerCase().includes('estad') || 
+        j.time_a.toLowerCase().includes('parag') || 
+        j.time_b.toLowerCase().includes('parag')
       ) {
         console.log(`[${j.id}] ${j.time_a} x ${j.time_b} - ${j.data_hora} - Placar: ${j.placar_a}x${j.placar_b} - Status: ${j.status}`);
       }
