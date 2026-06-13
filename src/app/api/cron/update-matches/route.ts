@@ -49,7 +49,8 @@ export async function GET(request: Request) {
       method: 'GET',
       headers: {
         'X-Auth-Token': API_KEY,
-      }
+      },
+      cache: 'no-store'
     });
 
     // Verificação de Rate Limit recomendada pelo football-data.org
