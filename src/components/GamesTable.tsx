@@ -7,6 +7,7 @@ import { savePalpiteAction } from '@/app/actions';
 import { format, isBefore, subMinutes, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { traduzirSelecao } from '@/lib/selecoes';
+import { exportarParaExcel } from '@/lib/exportExcel';
 
 export type Jogo = {
   id: number | string;
@@ -36,6 +37,86 @@ export type Usuario = {
 };
 
 // ─────────────────────────────────────────────────────────────────
+//  MULTI-SELECT DROPDOWN
+// ─────────────────────────────────────────────────────────────────
+function MultiSelectDropdown({ 
+  label, options, selected, onChange 
+}: { 
+  label: string, 
+  options: {value: string, label: string}[], 
+  selected: string[], 
+  onChange: (v: string[]) => void 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const toggle = (val: string) => {
+    if (selected.includes(val)) onChange(selected.filter(i => i !== val));
+    else onChange([...selected, val]);
+  };
+
+  const selectStyle = {
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.15)',
+    color: 'white',
+  };
+
+  return (
+    <div className="relative flex flex-col gap-1">
+      <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider">{label}</label>
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-yellow-400 min-w-[140px] text-left flex justify-between items-center transition-colors hover:bg-white/10"
+        style={selectStyle}
+      >
+        <span className="truncate pr-2">
+          {selected.length === 0 ? 'Todos' : `${selected.length} selecionado(s)`}
+        </span>
+        <span className="text-xs text-white/50">{isOpen ? '▲' : '▼'}</span>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-[100%] left-0 mt-1 z-50 bg-[#002776] border border-white/20 rounded-xl shadow-2xl max-h-60 overflow-y-auto min-w-[200px] p-2 flex flex-col gap-1">
+            
+            {/* Opção "Selecionar Todos" */}
+            <label className="flex items-center gap-3 px-2 py-1.5 hover:bg-white/10 rounded-lg cursor-pointer text-sm font-bold text-yellow-400 transition-colors border-b border-white/10 mb-1 pb-2">
+              <input 
+                type="checkbox" 
+                checked={selected.length > 0 && selected.length === options.length}
+                onChange={() => {
+                  if (selected.length === options.length) {
+                    onChange([]); // Desmarca todos
+                  } else {
+                    onChange(options.map(o => o.value)); // Marca todos fisicamente
+                  }
+                }}
+                className="rounded text-yellow-400 focus:ring-yellow-400 focus:ring-offset-[#002776] bg-white/10 border-white/20 w-4 h-4 cursor-pointer"
+              />
+              <span className="truncate">Selecionar Todos</span>
+            </label>
+
+            {/* Opções dinâmicas */}
+            {options.map(opt => (
+              <label key={opt.value} className="flex items-center gap-3 px-2 py-1.5 hover:bg-white/10 rounded-lg cursor-pointer text-sm font-medium text-white transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={selected.includes(opt.value)}
+                  onChange={() => toggle(opt.value)}
+                  className="rounded text-yellow-400 focus:ring-yellow-400 focus:ring-offset-[#002776] bg-white/10 border-white/20 w-4 h-4 cursor-pointer"
+                />
+                <span className="truncate">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  BARRA DE FILTROS
 // ─────────────────────────────────────────────────────────────────
 function FilterBar({
@@ -45,13 +126,15 @@ function FilterBar({
   data, setData,
   hora, setHora,
   onClear,
+  onDownload,
 }: {
   jogos: Jogo[];
-  grupo: string; setGrupo: (v: string) => void;
+  grupo: string[]; setGrupo: (v: string[]) => void;
   selecao: string; setSelecao: (v: string) => void;
-  data: string; setData: (v: string) => void;
-  hora: string; setHora: (v: string) => void;
+  data: string[]; setData: (v: string[]) => void;
+  hora: string[]; setHora: (v: string[]) => void;
   onClear: () => void;
+  onDownload: () => void;
 }) {
   const grupos = useMemo(() => {
     const set = new Set<string>();
@@ -75,7 +158,7 @@ function FilterBar({
     return Array.from(set).sort();
   }, [jogos]);
 
-  const temFiltro = grupo || selecao || data || hora;
+  const temFiltro = grupo.length > 0 || selecao || data.length > 0 || hora.length > 0;
 
   const selectStyle = {
     background: 'rgba(255,255,255,0.07)',
@@ -88,20 +171,12 @@ function FilterBar({
       <span className="text-xs font-bold text-white/50 uppercase tracking-wider self-center">🔍 Filtrar:</span>
 
       {/* Grupo */}
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Grupo</label>
-        <select
-          value={grupo}
-          onChange={e => setGrupo(e.target.value)}
-          className="rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer min-w-[120px]"
-          style={selectStyle}
-        >
-          <option value="" style={{ background: '#002776' }}>Todos</option>
-          {grupos.map(g => (
-            <option key={g} value={g} style={{ background: '#002776' }}>{g.replace('GROUP_', 'Grupo ')}</option>
-          ))}
-        </select>
-      </div>
+      <MultiSelectDropdown
+        label="Grupo"
+        options={grupos.map(g => ({ value: g, label: g.replace('GROUP_', 'Grupo ') }))}
+        selected={grupo}
+        onChange={setGrupo}
+      />
 
       {/* Seleção */}
       <div className="flex flex-col gap-1">
@@ -117,38 +192,20 @@ function FilterBar({
       </div>
 
       {/* Data */}
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Data</label>
-        <select
-          value={data}
-          onChange={e => setData(e.target.value)}
-          className="rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer min-w-[140px]"
-          style={selectStyle}
-        >
-          <option value="" style={{ background: '#002776' }}>Todas</option>
-          {datas.map(d => (
-            <option key={d} value={d} style={{ background: '#002776' }}>
-              {format(parseISO(d), "dd 'de' MMMM", { locale: ptBR })}
-            </option>
-          ))}
-        </select>
-      </div>
+      <MultiSelectDropdown
+        label="Data"
+        options={datas.map(d => ({ value: d, label: format(parseISO(d), "dd 'de' MMMM", { locale: ptBR }) }))}
+        selected={data}
+        onChange={setData}
+      />
 
       {/* Hora */}
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Horário</label>
-        <select
-          value={hora}
-          onChange={e => setHora(e.target.value)}
-          className="rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer min-w-[120px]"
-          style={selectStyle}
-        >
-          <option value="" style={{ background: '#002776' }}>Todos</option>
-          {horas.map(h => (
-            <option key={h} value={h} style={{ background: '#002776' }}>{h}</option>
-          ))}
-        </select>
-      </div>
+      <MultiSelectDropdown
+        label="Horário"
+        options={horas.map(h => ({ value: h, label: h }))}
+        selected={hora}
+        onChange={setHora}
+      />
 
       {/* Limpar */}
       {temFiltro && (
@@ -160,6 +217,16 @@ function FilterBar({
           ✕ Limpar
         </button>
       )}
+
+      {/* Baixar Planilha */}
+      <button
+        onClick={onDownload}
+        className="self-end ml-auto px-4 py-2 text-xs font-bold rounded-lg transition-all hover:scale-105 flex items-center gap-2"
+        style={{ background: 'linear-gradient(135deg, #009c3b 0%, #007a2e 100%)', color: 'white', border: '1px solid #4ade80' }}
+        title="Baixar a planilha no formato Excel com os jogos e filtros atuais"
+      >
+        <span className="text-sm">📊</span> Baixar Planilha
+      </button>
 
       {/* Contagem */}
     </div>
@@ -184,10 +251,10 @@ export default function GamesTable({
   const [session, setSession] = useState<{ id: string, username: string } | null>(null);
 
   // Filtros
-  const [filtroGrupo, setFiltroGrupo] = useState('');
+  const [filtroGrupo, setFiltroGrupo] = useState<string[]>([]);
   const [filtroSelecao, setFiltroSelecao] = useState('');
-  const [filtroData, setFiltroData] = useState('');
-  const [filtroHora, setFiltroHora] = useState('');
+  const [filtroData, setFiltroData] = useState<string[]>([]);
+  const [filtroHora, setFiltroHora] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/me').then(r => r.ok ? r.json() : null).then(s => s && setSession(s));
@@ -216,7 +283,7 @@ export default function GamesTable({
   // Aplicar filtros
   const jogosFiltrados = useMemo(() => {
     return jogos.filter(jogo => {
-      if (filtroGrupo && jogo.grupo !== filtroGrupo) return false;
+      if (filtroGrupo.length > 0 && (!jogo.grupo || !filtroGrupo.includes(jogo.grupo))) return false;
 
       if (filtroSelecao) {
         const busca = filtroSelecao.toLowerCase();
@@ -225,17 +292,17 @@ export default function GamesTable({
         if (!nomeA.includes(busca) && !nomeB.includes(busca)) return false;
       }
 
-      if (filtroData) {
+      if (filtroData.length > 0) {
         try {
           const dataJogo = format(new Date(jogo.data_hora), 'yyyy-MM-dd');
-          if (dataJogo !== filtroData) return false;
+          if (!filtroData.includes(dataJogo)) return false;
         } catch { return false; }
       }
 
-      if (filtroHora) {
+      if (filtroHora.length > 0) {
         try {
           const horaJogo = format(new Date(jogo.data_hora), 'HH:mm');
-          if (horaJogo !== filtroHora) return false;
+          if (!filtroHora.includes(horaJogo)) return false;
         } catch { return false; }
       }
 
@@ -244,13 +311,13 @@ export default function GamesTable({
   }, [jogos, filtroGrupo, filtroSelecao, filtroData, filtroHora]);
 
   const limparFiltros = () => {
-    setFiltroGrupo('');
+    setFiltroGrupo([]);
     setFiltroSelecao('');
-    setFiltroData('');
-    setFiltroHora('');
+    setFiltroData([]);
+    setFiltroHora([]);
   };
 
-  const temFiltro = filtroGrupo || filtroSelecao || filtroData || filtroHora;
+  const temFiltro = filtroGrupo.length > 0 || filtroSelecao || filtroData.length > 0 || filtroHora.length > 0;
 
   return (
     <div className="space-y-4">
@@ -262,6 +329,7 @@ export default function GamesTable({
         data={filtroData} setData={setFiltroData}
         hora={filtroHora} setHora={setFiltroHora}
         onClear={limparFiltros}
+        onDownload={() => exportarParaExcel(jogosFiltrados, todosOrdenados, palpites)}
       />
 
       {/* Contagem */}
