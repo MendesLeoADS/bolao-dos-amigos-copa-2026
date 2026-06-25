@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function RankingPage() {
+export default async function RankingPage({ searchParams }: { searchParams: { tab?: string } }) {
   const session = await getSession();
   if (!session) redirect('/login');
 
@@ -19,28 +19,58 @@ export default async function RankingPage() {
   const palpites = palpitesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
   const usuarios = usuariosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 
-  // Apenas Placares Exatos (1 cravada = 1 ponto)
-  const pontuacoes = usuarios.map(usuario => {
-    let pontos = 0;
-    const meusPalpites = palpites.filter(p => p.user_id === usuario.id);
+  // Função para verificar se um jogo é da Fase de Grupos (até 27/06/2026)
+  // Usaremos um cutoff seguro no dia 28/06/2026 às 00:00 (Brasília)
+  const isFaseGrupos = (data_hora: string) => {
+    return new Date(data_hora).getTime() < new Date('2026-06-28T00:00:00-03:00').getTime();
+  };
 
-    meusPalpites.forEach(palpite => {
-      const jogo = jogos.find(j => String(j.id) === String(palpite.jogo_id));
-      if (!jogo) return;
+  const calculatePoints = (filterFn: (jogo: any) => boolean) => {
+    return usuarios.map(usuario => {
+      let pontos = 0;
+      const meusPalpites = palpites.filter(p => p.user_id === usuario.id);
+  
+      meusPalpites.forEach(palpite => {
+        const jogo = jogos.find(j => String(j.id) === String(palpite.jogo_id));
+        if (!jogo) return;
+  
+        if (filterFn(jogo)) {
+          if (Number(palpite.palpite_a) === Number(jogo.placar_a) &&
+              Number(palpite.palpite_b) === Number(jogo.placar_b)) {
+            pontos += 1;
+          }
+        }
+      });
+  
+      return { ...usuario, pontos };
+    }).sort((a, b) => b.pontos - a.pontos);
+  };
 
-      if (Number(palpite.palpite_a) === Number(jogo.placar_a) &&
-          Number(palpite.palpite_b) === Number(jogo.placar_b)) {
-        pontos += 1;
-      }
-    });
+  const rankingGrupos = calculatePoints((jogo) => isFaseGrupos(jogo.data_hora));
+  const rankingMataMata = calculatePoints((jogo) => !isFaseGrupos(jogo.data_hora));
+  const rankingGeral = calculatePoints(() => true);
 
-    return { ...usuario, pontos };
-  });
+  const tab = searchParams?.tab || 'grupos';
+  
+  let pontuacoes = rankingGrupos;
+  let tabTitle = 'Fase de Grupos';
+  let hasPrize = true;
+  let jogosDaAba = jogos.filter(j => isFaseGrupos(j.data_hora));
 
-  pontuacoes.sort((a, b) => b.pontos - a.pontos);
+  if (tab === 'matamata') {
+    pontuacoes = rankingMataMata;
+    tabTitle = 'Mata-Mata';
+    hasPrize = true;
+    jogosDaAba = jogos.filter(j => !isFaseGrupos(j.data_hora));
+  } else if (tab === 'geral') {
+    pontuacoes = rankingGeral;
+    tabTitle = 'Geral (Somado)';
+    hasPrize = false;
+    jogosDaAba = jogos;
+  }
 
   const medalhas = ['🥇', '🥈', '🥉'];
-  const totalJogosEncerrados = jogos.length;
+  const totalJogosEncerrados = jogosDaAba.length;
 
   return (
     <main
@@ -72,21 +102,57 @@ export default async function RankingPage() {
                   🏆 Ranking
                 </h1>
                 <p className="mt-1 font-semibold" style={{ color: '#FFDF00' }}>
-                  {totalJogosEncerrados} jogo{totalJogosEncerrados !== 1 ? 's' : ''} encerrado{totalJogosEncerrados !== 1 ? 's' : ''} até agora
+                  {totalJogosEncerrados} jogo{totalJogosEncerrados !== 1 ? 's' : ''} encerrado{totalJogosEncerrados !== 1 ? 's' : ''} {tab === 'geral' ? 'no total' : 'nesta fase'}
                 </p>
               </div>
-              <div
-                className="flex items-center gap-3 rounded-xl px-4 py-3 border shadow-lg"
-                style={{ background: 'rgba(255,223,0,0.12)', borderColor: 'rgba(255,223,0,0.3)' }}
-              >
-                <img src="/busger_logo.png" alt="Busger" className="h-10 object-contain" />
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'rgba(255,223,0,0.7)' }}>Prêmio em jogo</p>
-                  <p className="font-black text-base" style={{ color: '#FFDF00' }}>Hambúrguer no Busger</p>
+              {hasPrize && (
+                <div
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 border shadow-lg"
+                  style={{ background: 'rgba(255,223,0,0.12)', borderColor: 'rgba(255,223,0,0.3)' }}
+                >
+                  <img src="/busger_logo.png" alt="Busger" className="h-10 object-contain" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'rgba(255,223,0,0.7)' }}>Prêmio ({tabTitle})</p>
+                    <p className="font-black text-base" style={{ color: '#FFDF00' }}>Hambúrguer no Busger</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
+        </div>
+
+        {/* Abas */}
+        <div className="flex bg-white/5 p-1.5 rounded-xl border border-white/10 overflow-x-auto no-scrollbar">
+          <Link
+            href="?tab=grupos"
+            className={`flex-1 min-w-[120px] text-center py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+              tab === 'grupos' 
+                ? 'bg-[#FFDF00] text-[#002776] shadow-md' 
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            Fase de Grupos
+          </Link>
+          <Link
+            href="?tab=matamata"
+            className={`flex-1 min-w-[120px] text-center py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+              tab === 'matamata' 
+                ? 'bg-[#FFDF00] text-[#002776] shadow-md' 
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            Mata-Mata
+          </Link>
+          <Link
+            href="?tab=geral"
+            className={`flex-1 min-w-[120px] text-center py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+              tab === 'geral' 
+                ? 'bg-[#FFDF00] text-[#002776] shadow-md' 
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            Geral
+          </Link>
         </div>
 
         {/* Cards de Ranking */}
@@ -101,14 +167,18 @@ export default async function RankingPage() {
                 key={user.id}
                 className="rounded-2xl p-5 flex items-center justify-between gap-4 shadow-lg border transition-all"
                 style={{
-                  background: isFirst
+                  background: (isFirst && hasPrize)
                     ? 'linear-gradient(135deg, rgba(255,223,0,0.15) 0%, rgba(255,223,0,0.05) 100%)'
-                    : isLast
+                    : isFirst && !hasPrize
+                    ? 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)'
+                    : (isLast && hasPrize)
                     ? 'rgba(239,68,68,0.08)'
                     : 'rgba(255,255,255,0.06)',
-                  borderColor: isFirst
+                  borderColor: (isFirst && hasPrize)
                     ? 'rgba(255,223,0,0.5)'
-                    : isLast
+                    : isFirst && !hasPrize
+                    ? 'rgba(255,255,255,0.3)'
+                    : (isLast && hasPrize)
                     ? 'rgba(239,68,68,0.3)'
                     : 'rgba(255,255,255,0.1)',
                 }}
@@ -117,8 +187,8 @@ export default async function RankingPage() {
                   {/* Posição */}
                   <div className="flex items-center justify-center w-12 h-12 rounded-full text-2xl font-black shrink-0"
                     style={{
-                      background: isFirst ? '#FFDF00' : isLast ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.1)',
-                      color: isFirst ? '#002776' : isLast ? '#fca5a5' : 'rgba(255,255,255,0.6)',
+                      background: isFirst && hasPrize ? '#FFDF00' : isFirst && !hasPrize ? '#ffffff' : (isLast && hasPrize) ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.1)',
+                      color: isFirst ? '#002776' : (isLast && hasPrize) ? '#fca5a5' : 'rgba(255,255,255,0.6)',
                     }}
                   >
                     {index < 3 ? medalhas[index] : `${index + 1}º`}
@@ -135,14 +205,19 @@ export default async function RankingPage() {
                         </span>
                       )}
                     </div>
-                    {isFirst && user.pontos > 0 && (
+                    {isFirst && hasPrize && user.pontos > 0 && (
                       <p className="text-xs font-bold mt-0.5" style={{ color: '#FFDF00' }}>
                         Sentindo o cheiro do lanche grátis 😎
                       </p>
                     )}
-                    {isLast && (
-                      <p className="text-xs font-bold mt-0.5 text-red-400">
-                        A caminho de pagar o Busger 😅
+                    {isFirst && !hasPrize && user.pontos > 0 && (
+                      <p className="text-xs font-bold mt-0.5" style={{ color: '#ffffff' }}>
+                        Líder supremo 👑
+                      </p>
+                    )}
+                    {!isFirst && hasPrize && (
+                      <p className="text-xs font-bold mt-0.5 text-red-300">
+                        Preparando o Pix pra pagar o Busger 💸
                       </p>
                     )}
                   </div>
@@ -151,11 +226,11 @@ export default async function RankingPage() {
                 {/* Pontuação */}
                 <div className="text-right shrink-0">
                   <div className="text-4xl font-black"
-                    style={{ color: isFirst ? '#FFDF00' : 'white' }}>
+                    style={{ color: isFirst && hasPrize ? '#FFDF00' : 'white' }}>
                     {user.pontos}
                   </div>
                   <div className="text-xs font-bold uppercase tracking-wider"
-                    style={{ color: isFirst ? 'rgba(255,223,0,0.7)' : 'rgba(255,255,255,0.4)' }}>
+                    style={{ color: isFirst && hasPrize ? 'rgba(255,223,0,0.7)' : 'rgba(255,255,255,0.4)' }}>
                     {user.pontos === 1 ? 'Cravada' : 'Cravadas'}
                   </div>
                 </div>
@@ -170,9 +245,9 @@ export default async function RankingPage() {
           <ul className="space-y-2 text-green-100">
             <li>✅ <strong className="text-white">1 ponto</strong> por placar <strong>exato</strong> (cravada). Sem choro.</li>
             <li>❌ <strong className="text-white">0 pontos</strong> qualquer outro resultado.</li>
-            <li className="pt-2 font-bold flex items-center gap-2" style={{ color: '#FFDF00' }}>⚠️ O último colocado paga o hambúrguer na{' '}
+            <li className="pt-2 font-bold flex items-center gap-2" style={{ color: '#FFDF00' }}>⚠️ Os 2 perdedores de cada fase pagam o hambúrguer no{' '}
               <img src="/busger_logo.png" alt="Busger" className="h-5 inline-block object-contain" />
-              {' '}pro campeão!
+              {' '}pro campeão! (O Ranking Geral não tem prêmio).
             </li>
           </ul>
         </div>

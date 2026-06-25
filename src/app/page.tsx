@@ -83,7 +83,7 @@ export default async function Home() {
         >
           <img src="/busger_logo.png" alt="Busger" className="h-8 object-contain shrink-0" />
           <span style={{ color: 'rgba(255,255,255,0.8)' }}>
-            Aposta em jogo: <strong style={{ color: '#FFDF00' }}>Hambúrguer no Busger</strong> para o vencedor — pago pelo último colocado!
+            Aposta em jogo: <strong style={{ color: '#FFDF00' }}>Hambúrguer no Busger</strong> para o vencedor — pago pelos 2 perdedores!
           </span>
         </div>
 
